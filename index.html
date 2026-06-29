@@ -203,11 +203,32 @@
     if (!w || w.closed || typeof w.closed === "undefined") {
       log("   ↳ BLOCKED ✅ (window.open returned no usable window)");
     } else {
-      log("   ↳ opened a new tab ❌ (blocker is OFF or not catching it)");
-      // close it quickly so the test page doesn't spam tabs when unblocked
-      try { w.close(); } catch (_) {}
+      log("   ↳ opened a new tab ❌ (blocker is OFF — this is the junk getting through)");
+      paintFakeAd(w, "AD TAB");
     }
   });
+
+  // Writes a clearly-labeled page into an opened tab/popup so you can
+  // actually SEE that something opened. It stays open until you close
+  // it. (Replaces the old auto-close, which made popups flash and vanish.)
+  function paintFakeAd(win, label) {
+    try {
+      win.document.title = label + " (test)";
+      win.document.body.style.cssText =
+        "margin:0;font-family:system-ui,sans-serif;background:#7a1f1f;color:#fff;" +
+        "display:flex;flex-direction:column;align-items:center;justify-content:center;" +
+        "height:100vh;text-align:center;gap:14px;";
+      win.document.body.innerHTML =
+        '<div style="font-size:40px">🚫</div>' +
+        '<h1 style="margin:0">This is the ' + label + '</h1>' +
+        '<p style="max-width:340px;opacity:.85;font-size:14px">On a real sketchy site this would be an ad or scam page. ' +
+        'It opened because the blocker is OFF. Close this tab and turn the blocker ON to stop it.</p>' +
+        '<button onclick="window.close()" style="padding:10px 18px;border:0;border-radius:8px;' +
+        'background:#fff;color:#7a1f1f;font-weight:600;cursor:pointer">Close this tab</button>';
+    } catch (e) {
+      log("   ↳ (couldn't paint the ad page, but the tab did open)");
+    }
+  }
 
   // ---- TEST 2: forced downloads -------------------------------------
   function triggerDownload(filename, contents) {
@@ -244,8 +265,8 @@
     if (!w || w.closed || typeof w.closed === "undefined") {
       log("   ↳ BLOCKED ✅");
     } else {
-      log("   ↳ popup opened ❌ (blocker OFF)");
-      try { w.close(); } catch (_) {}
+      log("   ↳ popup opened ❌ (blocker OFF — this is the junk getting through)");
+      paintFakeAd(w, "POPUP");
     }
   });
 
