@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sketchy Site Simulator (SAFE TEST)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    background: #11131a;
+    color: #e8eaf0;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  .banner {
+    background: #2e7d32;
+    color: #fff;
+    text-align: center;
+    padding: 10px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 80px; }
+  h1 { font-size: 22px; margin-bottom: 6px; }
+  .muted { color: #9aa0b4; font-size: 13px; margin-bottom: 24px; }
+
+  .card {
+    background: #1c1f2a;
+    border: 1px solid #2a2e3c;
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+  .card h2 { font-size: 15px; margin-bottom: 6px; color: #cdd2e4; }
+  .card p { font-size: 13px; color: #9aa0b4; margin-bottom: 12px; }
+
+  button, .fake-link {
+    display: inline-block;
+    background: #4f8cff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  button.alt { background: #3a3f52; }
+  .fake-content {
+    background: #14161f;
+    border: 1px dashed #333a4d;
+    border-radius: 8px;
+    padding: 28px;
+    text-align: center;
+    color: #7f8499;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  /* counter chips */
+  .chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+  .chip {
+    background: #1c1f2a;
+    border: 1px solid #2a2e3c;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: #9aa0b4;
+  }
+  .chip b { color: #4f8cff; }
+
+  /* the popup */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: #1c1f2a;
+    border: 1px solid #2a2e3c;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 360px;
+    text-align: center;
+  }
+  .modal h3 { margin-bottom: 8px; color: #fff; }
+  .modal p { color: #9aa0b4; font-size: 13px; margin-bottom: 16px; }
+  .modal button { width: 100%; }
+
+  .log {
+    background: #0c0e14;
+    border: 1px solid #232838;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px;
+    color: #6f8;
+    min-height: 60px;
+    white-space: pre-wrap;
+    margin-top: 8px;
+  }
+</style>
+</head>
+<body>
+  <div class="banner">✅ SAFE TEST PAGE — simulates ad-site behavior with no real ads, malware, or external sites. All actions are local and harmless.</div>
+
+  <div class="wrap">
+    <h1>Sketchy Site Simulator</h1>
+    <p class="muted">Use this to verify your Popup &amp; New-Tab Blocker extension. Each section below mimics one annoying behavior. With the extension ON, these should be blocked. With it OFF, they fire normally.</p>
+
+    <div class="chips">
+      <div class="chip">Clicks: <b id="clickCount">0</b></div>
+      <div class="chip">New-tabs attempted: <b id="tabCount">0</b></div>
+      <div class="chip">Downloads attempted: <b id="dlCount">0</b></div>
+      <div class="chip">Popups attempted: <b id="popCount">0</b></div>
+    </div>
+
+    <!-- TEST 1: click-anywhere-opens-tab after 2 clicks -->
+    <div class="card">
+      <h2>Test 1 — Click-hijack after 2 clicks</h2>
+      <p>Click anywhere in the gray box below. The first 2 clicks behave normally. From the 3rd click on, ANY click tries to open a new tab (popunder style).</p>
+      <div class="fake-content" id="trap">
+        Click me a few times…<br />
+        <small id="trapHint">(clicks 1–2 are safe)</small>
+      </div>
+    </div>
+
+    <!-- TEST 2: forced download -->
+    <div class="card">
+      <h2>Test 2 — Forced download</h2>
+      <p>This tries to auto-download a file (a harmless local .txt, but it uses the same trick sites use to push .exe files). The blocker should swallow programmatic downloads of executable-like files; this one is a .txt so you can see the mechanism either way.</p>
+      <button id="dlBtn">Trigger download</button>
+      <button class="alt" id="dlExeBtn">Trigger fake ".exe" download</button>
+    </div>
+
+    <!-- TEST 3: popup -->
+    <div class="card">
+      <h2>Test 3 — Popup window</h2>
+      <p>Two kinds: a real <code>window.open</code> popup (blocked by the extension) and an in-page modal popup (a normal site element — the extension won't touch this one, it's just here for completeness).</p>
+      <button id="popBtn">Open window.open popup</button>
+      <button class="alt" id="modalBtn">Show in-page modal</button>
+    </div>
+
+    <div class="card">
+      <h2>Event log</h2>
+      <p>Watch what happens in real time:</p>
+      <div class="log" id="log">Ready.\n</div>
+    </div>
+  </div>
+
+  <!-- in-page modal -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h3>🎉 You won a prize!</h3>
+      <p>(This is a fake in-page popup for testing. It's a normal page element, not a browser popup.)</p>
+      <button id="closeModal">Close</button>
+    </div>
+  </div>
+
+<script>
+  // ---- counters & logging -------------------------------------------
+  let clicks = 0, tabs = 0, dls = 0, pops = 0;
+  const $ = (id) => document.getElementById(id);
+  const logEl = $("log");
+  function log(msg) {
+    const t = new Date().toLocaleTimeString();
+    logEl.textContent += `[${t}] ${msg}\n`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function bump(which) {
+    if (which === "click") $("clickCount").textContent = ++clicks;
+    if (which === "tab")   $("tabCount").textContent   = ++tabs;
+    if (which === "dl")    $("dlCount").textContent    = ++dls;
+    if (which === "pop")   $("popCount").textContent   = ++pops;
+  }
+
+  // ---- TEST 1: click-anywhere popunder after 2 clicks ---------------
+  let globalClicks = 0;
+  document.addEventListener("click", function (e) {
+    globalClicks++;
+    bump("click");
+
+    if (globalClicks <= 2) {
+      log(`Click ${globalClicks}: safe (no tab opened).`);
+      if (globalClicks === 2) {
+        $("trapHint").textContent = "(trap armed — next click anywhere opens a tab)";
+        $("trap").style.borderColor = "#b54";
+      }
+      return;
+    }
+
+    // From the 3rd click onward, any click tries to open a new tab.
+    bump("tab");
+    log(`Click ${globalClicks}: attempting window.open (new ad tab)…`);
+    const w = window.open("about:blank", "_blank");
+    if (!w || w.closed || typeof w.closed === "undefined") {
+      log("   ↳ BLOCKED ✅ (window.open returned no usable window)");
+    } else {
+      log("   ↳ opened a new tab ❌ (blocker is OFF or not catching it)");
+      // close it quickly so the test page doesn't spam tabs when unblocked
+      try { w.close(); } catch (_) {}
+    }
+  });
+
+  // ---- TEST 2: forced downloads -------------------------------------
+  function triggerDownload(filename, contents) {
+    bump("dl");
+    log(`Attempting download: ${filename}`);
+    const blob = new Blob([contents], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click(); // programmatic click — the trick sites use
+    log(`   ↳ called a.click() for ${filename} (watch for a download prompt)`);
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  }
+
+  $("dlBtn").addEventListener("click", function (e) {
+    e.stopPropagation();
+    triggerDownload("harmless-test.txt", "This is a harmless local test file.\n");
+  });
+  $("dlExeBtn").addEventListener("click", function (e) {
+    e.stopPropagation();
+    // .exe name but it's literally just text — tests the extension's
+    // executable-extension swallow logic without being a real binary.
+    triggerDownload("fake-installer.exe", "Not a real program. Just text pretending to be an .exe for the blocker test.\n");
+  });
+
+  // ---- TEST 3: popups -----------------------------------------------
+  $("popBtn").addEventListener("click", function (e) {
+    e.stopPropagation();
+    bump("pop");
+    log("Attempting window.open popup…");
+    const w = window.open("about:blank", "popupTest", "width=400,height=300");
+    if (!w || w.closed || typeof w.closed === "undefined") {
+      log("   ↳ BLOCKED ✅");
+    } else {
+      log("   ↳ popup opened ❌ (blocker OFF)");
+      try { w.close(); } catch (_) {}
+    }
+  });
+
+  $("modalBtn").addEventListener("click", function (e) {
+    e.stopPropagation();
+    log("Showing in-page modal (normal element, not blocked).");
+    $("overlay").classList.add("show");
+  });
+  $("closeModal").addEventListener("click", function (e) {
+    e.stopPropagation();
+    $("overlay").classList.remove("show");
+  });
+
+  log("Test page loaded. Toggle your extension on/off and try each test.");
+</script>
+</body>
+</html>
