@@ -72,6 +72,37 @@
   .log .info { color: #8a90a6; }
 
   iframe.hidden-frame { display: none; }
+
+  /* Fake "Adobe needs updating" popup — full-page takeover w/ tiny X */
+  #fakeUpdateBackdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 99999; display: flex; align-items: center; justify-content: center;
+  }
+  /* Separate invisible click-catcher layered OVER everything, to test
+     whether the panic sweep removes BOTH the visible popup and the ghost. */
+  #fakeUpdateCatcher {
+    position: fixed; inset: 0; z-index: 100000; background: transparent;
+    cursor: pointer;
+  }
+  #fakeUpdateModal {
+    position: relative; z-index: 100001;
+    background: #fff; color: #222; width: 380px; max-width: 90vw;
+    border-radius: 10px; padding: 28px 24px 22px; text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5); font-family: system-ui, sans-serif;
+  }
+  #fakeUpdateModal .logo { font-size: 40px; margin-bottom: 8px; }
+  #fakeUpdateModal h3 { font-size: 18px; margin-bottom: 6px; color: #c00; }
+  #fakeUpdateModal p { font-size: 13px; color: #555; margin-bottom: 16px; line-height: 1.5; }
+  #fakeUpdateModal .dlbtn {
+    background: #d32; color: #fff; border: none; border-radius: 6px;
+    padding: 11px 22px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  /* The tiny X in the corner — exactly the sketchy pattern */
+  #fakeUpdateModal .tinyx {
+    position: absolute; top: 6px; right: 8px; width: 16px; height: 16px;
+    font-size: 12px; line-height: 16px; color: #999; cursor: pointer;
+    text-align: center; user-select: none;
+  }
 </style>
 </head>
 <body>
@@ -80,6 +111,14 @@
   <div class="wrap">
     <h1>Popunder Stress Test — HARD</h1>
     <p class="muted">Escalating from easy to brutal. Run each with the extension <b>ON</b>, watch for <span style="color:#7fe6a0">BLOCKED</span>. Anything marked <span style="color:#ff8a72">LEAK</span> is a mechanism that got through — tell me which ones leak and I'll patch them. The brutal tier targets the iframe <code>contentWindow.open</code> theft that causes about:blank popups.</p>
+
+    <div style="background:#1a1d28;border:1px solid #2a2e3c;border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:12px;color:#b8bcce;line-height:1.5">
+      <b style="color:#e6e8f0">Testing the four modes:</b> what <em>should</em> be blocked depends on your slider position.<br>
+      • <b style="color:#34c759">Normal</b>: only blatant about:blank popunders blocked. Real-URL popups + downloads should PASS (that's correct — legit sites work).<br>
+      • <b style="color:#e0a93b">Aggressive</b>: E + H tiers blocked. Brutal iframe tier may LEAK (reserved for Maximum).<br>
+      • <b style="color:#e0563b">Maximum</b>: everything blocked incl. brutal tier. This is the all-green run.<br>
+      Set the slider, then run the tests, and confirm each mode behaves differently.
+    </div>
 
     <div class="chips">
       <div class="chip">Attempts: <b id="cAttempt">0</b></div>
@@ -161,6 +200,18 @@
       <h2>B4 — Nested iframe, steal from inner frame</h2>
       <p>An iframe inside an iframe; steals <code>open</code> from the innermost contentWindow. Tests subtree coverage.</p>
       <button class="danger" onclick="T.iframeStealNested()">Run B4</button>
+    </div>
+
+    <!-- ============ PANIC HOTKEY TIER ============ -->
+    <div class="tier-label" style="color:#c77dff">Panic hotkey — fake "update" popup with tiny X</div>
+
+    <div class="card" style="border-color:#4a2a5a">
+      <h2>P1 — Fake "Adobe needs updating" full-page popup</h2>
+      <p>Spawns a full-screen takeover popup with a tiny X in the corner, exactly like sketchy sites use — PLUS a separate <em>invisible</em> click-catcher layered over everything (so clicking anywhere triggers it). Press your panic hotkey (default <code>Esc</code>) to remove it. Tests whether the sweep removes BOTH the visible popup and the invisible ghost.</p>
+      <button onclick="T.spawnFakeUpdate(false)">Spawn it once</button>
+      <button class="alt" onclick="T.spawnFakeUpdate(true)">Spawn + respawn every 20s</button>
+      <button class="alt" onclick="T.stopRespawn()">Stop respawning</button>
+      <p style="margin-top:8px;font-size:11.5px;color:#c77dff">After removing with the hotkey: if it's truly gone, clicking the page works normally. If a ghost remains, your clicks would still trigger the catcher. The respawn option tests whether removal stays gone or the popup comes back (it will — that's the page timer limit).</p>
     </div>
 
     <div class="card">
@@ -376,6 +427,72 @@
         log("   ↳ nested setup threw: "+e.message, "info");
       }
       setTimeout(function(){ try{ outer.remove(); }catch(e){} }, 500);
+    },
+
+    // PANIC HOTKEY TEST — fake "update" popup + invisible catcher
+    _respawnTimer: null,
+    spawnFakeUpdate: function(respawn){
+      this._buildFakeUpdate();
+      if (respawn){
+        var self = this;
+        if (this._respawnTimer) clearInterval(this._respawnTimer);
+        this._respawnTimer = setInterval(function(){
+          // only respawn if it was removed (don't stack duplicates)
+          if (!document.getElementById("fakeUpdateBackdrop")) {
+            log("P1: respawning fake update popup (20s timer)…", "info");
+            self._buildFakeUpdate();
+          }
+        }, 20000);
+        log("P1: respawn ON — popup returns every 20s if removed. This demonstrates the page-timer limit: removal is real, but the page makes a NEW one.", "info");
+      }
+    },
+    _buildFakeUpdate: function(){
+      // remove any existing instance first
+      var old = document.getElementById("fakeUpdateBackdrop");
+      if (old) old.remove();
+      var oldC = document.getElementById("fakeUpdateCatcher");
+      if (oldC) oldC.remove();
+
+      // invisible click-catcher (the ghost) — separate element on top
+      var catcher = document.createElement("div");
+      catcher.id = "fakeUpdateCatcher";
+      catcher.addEventListener("click", function(){
+        log("   ⚠ CATCHER CLICKED — an invisible layer caught your click! (On a real site this = ad/redirect.) If you see this AFTER pressing the hotkey, the ghost wasn't removed.", "leak");
+      });
+      document.body.appendChild(catcher);
+
+      // visible popup
+      var backdrop = document.createElement("div");
+      backdrop.id = "fakeUpdateBackdrop";
+      backdrop.innerHTML =
+        '<div id="fakeUpdateModal">' +
+          '<div class="tinyx" title="close">✕</div>' +
+          '<div class="logo">⚠️</div>' +
+          '<h3>Adobe Flash Player is out of date</h3>' +
+          '<p>Your version of Adobe Flash Player is outdated and may be insecure. Update now to continue.</p>' +
+          '<button class="dlbtn">Update Now</button>' +
+        '</div>';
+      document.body.appendChild(backdrop);
+      // lock scroll like real popups do
+      document.body.style.overflow = "hidden";
+
+      // wire the tiny X and the fake download button (both "sketchy")
+      backdrop.querySelector(".tinyx").addEventListener("click", function(e){
+        e.stopPropagation();
+        log("P1: you found and clicked the real tiny X — popup closed manually.", "info");
+        backdrop.remove(); catcher.remove();
+        document.body.style.overflow = "";
+      });
+      backdrop.querySelector(".dlbtn").addEventListener("click", function(e){
+        e.stopPropagation();
+        log("   ⚠ 'Update Now' clicked — on a real site this is the malware download. (Harmless here.)", "leak");
+      });
+
+      log("P1: fake update popup spawned (full-page + tiny X + invisible catcher). Press your panic hotkey (Esc) to remove it.", "info");
+    },
+    stopRespawn: function(){
+      if (this._respawnTimer){ clearInterval(this._respawnTimer); this._respawnTimer = null; log("P1: respawn stopped.", "info"); }
+      else log("P1: no respawn timer was running.", "info");
     }
   };
 
