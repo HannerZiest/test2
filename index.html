@@ -3,284 +3,399 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Sketchy Site Simulator (SAFE TEST)</title>
+<title>Popunder Stress Test — HARD (SAFE / LOCAL)</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
-    background: #11131a;
-    color: #e8eaf0;
-    line-height: 1.5;
-    min-height: 100vh;
+    background: #0e1016; color: #e6e8f0; line-height: 1.55;
+    padding-bottom: 80px;
   }
   .banner {
-    background: #2e7d32;
-    color: #fff;
-    text-align: center;
-    padding: 10px;
-    font-size: 13px;
-    font-weight: 600;
+    background: #2e7d32; color: #fff; text-align: center;
+    padding: 10px 14px; font-size: 13px; font-weight: 600;
+    position: sticky; top: 0; z-index: 50;
   }
-  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 20px 80px; }
-  h1 { font-size: 22px; margin-bottom: 6px; }
-  .muted { color: #9aa0b4; font-size: 13px; margin-bottom: 24px; }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 24px 20px; }
+  h1 { font-size: 23px; margin-bottom: 4px; }
+  .muted { color: #8a90a6; font-size: 13px; margin-bottom: 22px; }
+
+  .tier-label {
+    font-size: 12px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; margin: 26px 0 10px; padding-left: 2px;
+  }
+  .tier-easy   { color: #58c97a; }
+  .tier-hard   { color: #e0a93b; }
+  .tier-brutal { color: #e0563b; }
 
   .card {
-    background: #1c1f2a;
-    border: 1px solid #2a2e3c;
-    border-radius: 12px;
-    padding: 18px;
-    margin-bottom: 18px;
+    background: #181b25; border: 1px solid #272b39; border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 14px;
   }
-  .card h2 { font-size: 15px; margin-bottom: 6px; color: #cdd2e4; }
-  .card p { font-size: 13px; color: #9aa0b4; margin-bottom: 12px; }
+  .card.brutal { border-color: #5a2a22; }
+  .card.hard   { border-color: #5a4622; }
+  .card h2 { font-size: 14px; margin-bottom: 5px; color: #d4d8ea; }
+  .card p  { font-size: 12.5px; color: #8a90a6; margin-bottom: 11px; }
+  code { background: #0c0e14; padding: 1px 5px; border-radius: 4px; font-size: 12px; color: #c7cdf0; }
 
-  button, .fake-link {
-    display: inline-block;
-    background: #4f8cff;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: none;
+  button {
+    background: #4f8cff; color: #fff; border: none; border-radius: 8px;
+    padding: 9px 14px; font-size: 13px; font-weight: 500; cursor: pointer;
+    margin: 2px 4px 2px 0;
   }
-  button.alt { background: #3a3f52; }
+  button.alt    { background: #353a4d; }
+  button.danger { background: #b5482f; }
+
   .fake-content {
-    background: #14161f;
-    border: 1px dashed #333a4d;
-    border-radius: 8px;
-    padding: 28px;
-    text-align: center;
-    color: #7f8499;
-    font-size: 14px;
-    cursor: pointer;
-    user-select: none;
+    background: #12141d; border: 1px dashed #333a4d; border-radius: 8px;
+    padding: 22px; text-align: center; color: #777d95; font-size: 13px;
+    cursor: pointer; user-select: none; margin-top: 6px;
   }
 
-  /* counter chips */
-  .chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0; position: sticky; top: 40px; z-index: 40;
+           background: #0e1016; padding: 8px 0; }
   .chip {
-    background: #1c1f2a;
-    border: 1px solid #2a2e3c;
-    border-radius: 20px;
-    padding: 6px 14px;
-    font-size: 12px;
-    color: #9aa0b4;
+    background: #181b25; border: 1px solid #272b39; border-radius: 20px;
+    padding: 5px 12px; font-size: 11.5px; color: #8a90a6;
   }
   .chip b { color: #4f8cff; }
-
-  /* the popup */
-  .overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-  }
-  .overlay.show { display: flex; }
-  .modal {
-    background: #1c1f2a;
-    border: 1px solid #2a2e3c;
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 360px;
-    text-align: center;
-  }
-  .modal h3 { margin-bottom: 8px; color: #fff; }
-  .modal p { color: #9aa0b4; font-size: 13px; margin-bottom: 16px; }
-  .modal button { width: 100%; }
+  .chip.leak b { color: #e0563b; }
 
   .log {
-    background: #0c0e14;
-    border: 1px solid #232838;
-    border-radius: 8px;
-    padding: 12px;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 12px;
-    color: #6f8;
-    min-height: 60px;
-    white-space: pre-wrap;
-    margin-top: 8px;
+    background: #0a0c12; border: 1px solid #202838;
+    border-radius: 8px; padding: 12px; font-family: ui-monospace, Menlo, monospace;
+    font-size: 11.5px; color: #7fe6a0; min-height: 80px; max-height: 280px;
+    overflow-y: auto; white-space: pre-wrap; margin-top: 6px;
   }
+  .log .leak { color: #ff8a72; }
+  .log .blocked { color: #7fe6a0; }
+  .log .info { color: #8a90a6; }
+
+  iframe.hidden-frame { display: none; }
 </style>
 </head>
 <body>
-  <div class="banner">✅ SAFE TEST PAGE — simulates ad-site behavior with no real ads, malware, or external sites. All actions are local and harmless.</div>
+  <div class="banner">✅ SAFE / LOCAL — no real ads, no malware, no external sites. Every test runs locally. Popups it opens are clearly labeled and self-close.</div>
 
   <div class="wrap">
-    <h1>Sketchy Site Simulator</h1>
-    <p class="muted">Use this to verify your Popup &amp; New-Tab Blocker extension. Each section below mimics one annoying behavior. With the extension ON, these should be blocked. With it OFF, they fire normally.</p>
+    <h1>Popunder Stress Test — HARD</h1>
+    <p class="muted">Escalating from easy to brutal. Run each with the extension <b>ON</b>, watch for <span style="color:#7fe6a0">BLOCKED</span>. Anything marked <span style="color:#ff8a72">LEAK</span> is a mechanism that got through — tell me which ones leak and I'll patch them. The brutal tier targets the iframe <code>contentWindow.open</code> theft that causes about:blank popups.</p>
 
     <div class="chips">
-      <div class="chip">Clicks: <b id="clickCount">0</b></div>
-      <div class="chip">New-tabs attempted: <b id="tabCount">0</b></div>
-      <div class="chip">Downloads attempted: <b id="dlCount">0</b></div>
-      <div class="chip">Popups attempted: <b id="popCount">0</b></div>
+      <div class="chip">Attempts: <b id="cAttempt">0</b></div>
+      <div class="chip">Blocked: <b id="cBlock">0</b></div>
+      <div class="chip leak">Leaked: <b id="cLeak">0</b></div>
     </div>
 
-    <!-- TEST 1: click-anywhere-opens-tab after 2 clicks -->
+    <!-- ============ EASY TIER ============ -->
+    <div class="tier-label tier-easy">Easy tier — baseline (extension should already kill these)</div>
+
     <div class="card">
-      <h2>Test 1 — Click-hijack after 2 clicks</h2>
-      <p>Click anywhere in the gray box below. The first 2 clicks behave normally. From the 3rd click on, ANY click tries to open a new tab (popunder style).</p>
-      <div class="fake-content" id="trap">
-        Click me a few times…<br />
-        <small id="trapHint">(clicks 1–2 are safe)</small>
-      </div>
+      <h2>E1 — Direct window.open popup</h2>
+      <p>Plain <code>window.open('about:blank')</code>. The classic.</p>
+      <button onclick="T.directOpen()">Run E1</button>
     </div>
 
-    <!-- TEST 2: forced download -->
     <div class="card">
-      <h2>Test 2 — Forced download</h2>
-      <p>This tries to auto-download a file (a harmless local .txt, but it uses the same trick sites use to push .exe files). The blocker should swallow programmatic downloads of executable-like files; this one is a .txt so you can see the mechanism either way.</p>
-      <button id="dlBtn">Trigger download</button>
-      <button class="alt" id="dlExeBtn">Trigger fake ".exe" download</button>
+      <h2>E2 — Click-hijack after 2 clicks</h2>
+      <p>Click the box. Clicks 1–2 safe; from 3 on, any click calls <code>window.open</code>.</p>
+      <div class="fake-content" id="trap">Click me a few times…<br /><small id="trapHint">(clicks 1–2 are safe)</small></div>
     </div>
 
-    <!-- TEST 3: popup -->
     <div class="card">
-      <h2>Test 3 — Popup window</h2>
-      <p>Two kinds: a real <code>window.open</code> popup (blocked by the extension) and an in-page modal popup (a normal site element — the extension won't touch this one, it's just here for completeness).</p>
-      <button id="popBtn">Open window.open popup</button>
-      <button class="alt" id="modalBtn">Show in-page modal</button>
+      <h2>E3 — Forced .exe download</h2>
+      <p>Creates <code>&lt;a download href="blob:..."&gt;</code> and auto-clicks it. Watch your downloads bar.</p>
+      <button onclick="T.forceDownload('fake-installer.exe')">Run E3 (.exe)</button>
+      <button class="alt" onclick="T.forceDownload('notes.txt')">Run E3 (.txt)</button>
+    </div>
+
+    <!-- ============ HARD TIER ============ -->
+    <div class="tier-label tier-hard">Hard tier — delayed & indirect</div>
+
+    <div class="card hard">
+      <h2>H1 — Timed popunder (1.5s delay)</h2>
+      <p>Calls <code>window.open</code> on a <code>setTimeout</code>, not on your click. Tests that the lock holds regardless of timing.</p>
+      <button onclick="T.timedOpen()">Run H1</button>
+    </div>
+
+    <div class="card hard">
+      <h2>H2 — Prototype open()</h2>
+      <p>Calls <code>Window.prototype.open.call(window, ...)</code> directly, bypassing the instance property.</p>
+      <button onclick="T.protoOpen()">Run H2</button>
+    </div>
+
+    <div class="card hard">
+      <h2>H3 — Reassign attempt then open</h2>
+      <p>Tries <code>window.open = nativeOpen</code> to restore the original, then calls it. Tests that your lock is non-writable.</p>
+      <button onclick="T.reassignOpen()">Run H3</button>
+    </div>
+
+    <div class="card hard">
+      <h2>H4 — Synthetic click dispatch download</h2>
+      <p>Instead of <code>.click()</code>, dispatches a real <code>MouseEvent</code> at a download anchor.</p>
+      <button onclick="T.dispatchDownload()">Run H4</button>
+    </div>
+
+    <!-- ============ BRUTAL TIER ============ -->
+    <div class="tier-label tier-brutal">Brutal tier — iframe contentWindow.open theft (the about:blank vector)</div>
+
+    <div class="card brutal">
+      <h2>B1 — Steal open() from a fresh iframe</h2>
+      <p>Creates a hidden <code>&lt;iframe&gt;</code>, grabs <code>iframe.contentWindow.open</code> (a fresh window object), and calls it. This is the main way about:blank popunders defeat a top-level-only lock. <b>This is the one that matters most.</b></p>
+      <button class="danger" onclick="T.iframeSteal()">Run B1</button>
+    </div>
+
+    <div class="card brutal">
+      <h2>B2 — Steal from a later-inserted iframe</h2>
+      <p>Inserts the iframe <em>after</em> page load (simulating a script that adds frames dynamically), waits for it, then steals its <code>open</code>. Tests the mutation observer / load-time patching.</p>
+      <button class="danger" onclick="T.iframeStealLate()">Run B2</button>
+    </div>
+
+    <div class="card brutal">
+      <h2>B3 — Steal from about:blank no-src iframe</h2>
+      <p>Iframe with no <code>src</code> at all (pure about:blank). Grabs its contentWindow.open. Closest match to what you see in your history.</p>
+      <button class="danger" onclick="T.iframeStealBlank()">Run B3</button>
+    </div>
+
+    <div class="card brutal">
+      <h2>B4 — Nested iframe, steal from inner frame</h2>
+      <p>An iframe inside an iframe; steals <code>open</code> from the innermost contentWindow. Tests subtree coverage.</p>
+      <button class="danger" onclick="T.iframeStealNested()">Run B4</button>
     </div>
 
     <div class="card">
       <h2>Event log</h2>
-      <p>Watch what happens in real time:</p>
-      <div class="log" id="log">Ready.\n</div>
-    </div>
-  </div>
-
-  <!-- in-page modal -->
-  <div class="overlay" id="overlay">
-    <div class="modal">
-      <h3>🎉 You won a prize!</h3>
-      <p>(This is a fake in-page popup for testing. It's a normal page element, not a browser popup.)</p>
-      <button id="closeModal">Close</button>
+      <p>Green = blocked. Orange = leaked through. Each opened popup is labeled and self-closes after 3s so it can't spam you.</p>
+      <div class="log" id="log">Ready. Load the extension, then run the tests top to bottom.\n</div>
+      <button class="alt" onclick="T.clearLog()">Clear log</button>
     </div>
   </div>
 
 <script>
-  // ---- counters & logging -------------------------------------------
-  let clicks = 0, tabs = 0, dls = 0, pops = 0;
-  const $ = (id) => document.getElementById(id);
-  const logEl = $("log");
-  function log(msg) {
-    const t = new Date().toLocaleTimeString();
-    logEl.textContent += `[${t}] ${msg}\n`;
-    logEl.scrollTop = logEl.scrollHeight;
-  }
-  function bump(which) {
-    if (which === "click") $("clickCount").textContent = ++clicks;
-    if (which === "tab")   $("tabCount").textContent   = ++tabs;
-    if (which === "dl")    $("dlCount").textContent    = ++dls;
-    if (which === "pop")   $("popCount").textContent   = ++pops;
+  // ---- counters + logging ----
+  var attempts = 0, blocked = 0, leaked = 0;
+  function $(id){ return document.getElementById(id); }
+  function setC(){ $("cAttempt").textContent=attempts; $("cBlock").textContent=blocked; $("cLeak").textContent=leaked; }
+  function log(msg, cls){
+    var t = new Date().toLocaleTimeString();
+    var span = cls ? '<span class="'+cls+'">'+msg+'</span>' : msg;
+    $("log").innerHTML += '['+t+'] '+span+'\n';
+    $("log").scrollTop = $("log").scrollHeight;
   }
 
-  // ---- TEST 1: click-anywhere popunder after 2 clicks ---------------
-  let globalClicks = 0;
-  document.addEventListener("click", function (e) {
-    globalClicks++;
-    bump("click");
-
-    if (globalClicks <= 2) {
-      log(`Click ${globalClicks}: safe (no tab opened).`);
-      if (globalClicks === 2) {
-        $("trapHint").textContent = "(trap armed — next click anywhere opens a tab)";
-        $("trap").style.borderColor = "#b54";
+  // Decide whether an open() call was blocked, by inspecting the result.
+  // The extension returns a fake window whose .closed is true and whose
+  // methods are no-ops. A real popup returns a usable window.
+  // We treat "null / closed / unusable" as BLOCKED.
+  function judgeOpen(result, label){
+    attempts++;
+    var isBlocked = false;
+    try {
+      if (!result) isBlocked = true;
+      else if (result.closed === true) isBlocked = true;
+      else {
+        // Probe: a real window lets us set and read document.title via
+        // write; the fake one swallows it. We do a light, safe probe.
+        // If anything throws or is a no-op proxy, treat as blocked.
+        if (typeof result.focus !== "function") isBlocked = true;
       }
+    } catch(e){ isBlocked = true; }
+
+    if (isBlocked){
+      blocked++; setC();
+      log("   ↳ BLOCKED ✅ ("+label+")", "blocked");
+    } else {
+      leaked++; setC();
+      log("   ↳ LEAK ❌ ("+label+") — a real popup opened", "leak");
+      paintAndClose(result, label);
+    }
+    return isBlocked;
+  }
+
+  // Paints a clearly-labeled page into a leaked popup, then self-closes
+  // after 3s so even when something gets through it can't spam you.
+  function paintAndClose(win, label){
+    try {
+      win.document.title = label + " (leak)";
+      win.document.body.style.cssText =
+        "margin:0;font-family:system-ui,sans-serif;background:#7a1f1f;color:#fff;"+
+        "display:flex;flex-direction:column;align-items:center;justify-content:center;"+
+        "height:100vh;text-align:center;gap:12px;";
+      win.document.body.innerHTML =
+        '<div style="font-size:38px">🚫</div>'+
+        '<h1 style="margin:0;font-size:20px">LEAK: '+label+'</h1>'+
+        '<p style="max-width:320px;opacity:.85;font-size:13px">This mechanism got through the extension. '+
+        'On a real site this would be the ad/scam tab. Closing automatically…</p>';
+      setTimeout(function(){ try{ win.close(); }catch(e){} }, 3000);
+    } catch(e){
+      // If we can't even paint it, it still counts as a leak (already logged).
+      try { setTimeout(function(){ win.close(); }, 3000); } catch(_){}
+    }
+  }
+
+  // ---- the test harness ----
+  var T = {
+    clearLog: function(){ $("log").innerHTML = "Cleared.\n"; },
+
+    // EASY
+    directOpen: function(){
+      log("E1: window.open('about:blank')…", "info");
+      var w = window.open("about:blank","_blank");
+      judgeOpen(w, "E1 direct open");
+    },
+
+    forceDownload: function(name){
+      attempts++; setC();
+      log("E3: forcing download of "+name+"…", "info");
+      var blob = new Blob(["Local harmless test file pretending to be "+name+".\n"], {type:"application/octet-stream"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = name;
+      document.body.appendChild(a);
+      a.click(); // programmatic auto-download
+      log("   ↳ called a.click() for "+name+" — if no download bar appears, it was swallowed ✅", "info");
+      setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1500);
+    },
+
+    // HARD
+    timedOpen: function(){
+      log("H1: scheduling window.open in 1.5s…", "info");
+      setTimeout(function(){
+        log("H1: firing delayed window.open…", "info");
+        var w = window.open("about:blank","_blank");
+        judgeOpen(w, "H1 timed open");
+      }, 1500);
+    },
+
+    protoOpen: function(){
+      log("H2: Window.prototype.open.call(window,...)…", "info");
+      var w;
+      try { w = Window.prototype.open.call(window, "about:blank", "_blank"); }
+      catch(e){ log("   ↳ threw: "+e.message, "info"); }
+      judgeOpen(w, "H2 prototype open");
+    },
+
+    reassignOpen: function(){
+      log("H3: attempting window.open = native, then open…", "info");
+      var before = window.open;
+      try {
+        // Try to wipe the lock. If it's non-writable this silently fails
+        // (or throws in strict mode); either way the lock should hold.
+        window.open = function(){ return { closed:false, focus:function(){}, document:document }; };
+      } catch(e){ log("   ↳ reassignment threw (good): "+e.message, "info"); }
+      var after = window.open;
+      if (after === before) log("   ↳ reassignment had NO effect (lock held) ✅", "blocked");
+      else log("   ↳ window.open WAS reassigned — lock may be writable ⚠", "leak");
+      var w = window.open("about:blank","_blank");
+      judgeOpen(w, "H3 reassign+open");
+    },
+
+    dispatchDownload: function(){
+      attempts++; setC();
+      log("H4: dispatching synthetic MouseEvent at download anchor…", "info");
+      var blob = new Blob(["synthetic dispatch test"], {type:"application/octet-stream"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = "dispatched.exe";
+      document.body.appendChild(a);
+      var ev = new MouseEvent("click", {bubbles:true, cancelable:true, view:window});
+      var notCancelled = a.dispatchEvent(ev);
+      if (notCancelled) log("   ↳ dispatch went through — watch for a download (possible leak)", "leak");
+      else log("   ↳ dispatch was cancelled/swallowed ✅", "blocked");
+      setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1500);
+    },
+
+    // BRUTAL — iframe contentWindow.open theft
+    _stealFrom: function(frameWin, label){
+      var stolenOpen;
+      try { stolenOpen = frameWin.open; }
+      catch(e){ log("   ↳ couldn't read contentWindow.open: "+e.message, "info"); }
+      if (!stolenOpen){ log("   ↳ no open() on frame (already neutralized?) ✅", "blocked"); attempts++; blocked++; setC(); return; }
+      var w;
+      try { w = stolenOpen.call(frameWin, "about:blank", "_blank"); }
+      catch(e){ log("   ↳ stolen open threw: "+e.message, "info"); }
+      judgeOpen(w, label);
+    },
+
+    iframeSteal: function(){
+      log("B1: creating hidden iframe, stealing contentWindow.open…", "info");
+      var f = document.createElement("iframe");
+      f.className = "hidden-frame";
+      document.body.appendChild(f);
+      var self = this;
+      // contentWindow is available synchronously for src-less frames
+      self._stealFrom(f.contentWindow, "B1 iframe steal");
+      setTimeout(function(){ try{ f.remove(); }catch(e){} }, 500);
+    },
+
+    iframeStealLate: function(){
+      log("B2: inserting iframe AFTER load, will steal on ready…", "info");
+      var f = document.createElement("iframe");
+      f.className = "hidden-frame";
+      var self = this;
+      f.onload = function(){
+        log("B2: iframe loaded, stealing now…", "info");
+        self._stealFrom(f.contentWindow, "B2 late iframe steal");
+        setTimeout(function(){ try{ f.remove(); }catch(e){} }, 500);
+      };
+      // about:blank frames may not fire load reliably; also try after a tick
+      document.body.appendChild(f);
+      setTimeout(function(){
+        if (f.contentWindow) { self._stealFrom(f.contentWindow, "B2 late iframe steal (tick)"); }
+      }, 400);
+    },
+
+    iframeStealBlank: function(){
+      log("B3: no-src about:blank iframe, stealing contentWindow.open…", "info");
+      var f = document.createElement("iframe"); // no src at all
+      f.className = "hidden-frame";
+      document.body.appendChild(f);
+      var self = this;
+      self._stealFrom(f.contentWindow, "B3 blank iframe steal");
+      setTimeout(function(){ try{ f.remove(); }catch(e){} }, 500);
+    },
+
+    iframeStealNested: function(){
+      log("B4: nested iframe, stealing from inner frame…", "info");
+      var outer = document.createElement("iframe");
+      outer.className = "hidden-frame";
+      document.body.appendChild(outer);
+      var self = this;
+      try {
+        var odoc = outer.contentWindow.document;
+        var inner = odoc.createElement("iframe");
+        odoc.body && odoc.body.appendChild(inner);
+        if (!odoc.body){
+          // about:blank outer may lack body; write one
+          odoc.open(); odoc.write("<body></body>"); odoc.close();
+          inner = odoc.createElement("iframe");
+          odoc.body.appendChild(inner);
+        }
+        self._stealFrom(inner.contentWindow, "B4 nested iframe steal");
+      } catch(e){
+        log("   ↳ nested setup threw: "+e.message, "info");
+      }
+      setTimeout(function(){ try{ outer.remove(); }catch(e){} }, 500);
+    }
+  };
+
+  // ---- E2 click-hijack wiring ----
+  var gClicks = 0;
+  document.addEventListener("click", function(e){
+    // ignore clicks on buttons (those run their own tests)
+    if (e.target.closest("button")) return;
+    gClicks++;
+    if (gClicks <= 2){
+      log("E2 click "+gClicks+": safe.", "info");
+      if (gClicks === 2){ $("trapHint").textContent="(armed — next click anywhere calls window.open)"; $("trap").style.borderColor="#b54"; }
       return;
     }
-
-    // From the 3rd click onward, any click tries to open a new tab.
-    bump("tab");
-    log(`Click ${globalClicks}: attempting window.open (new ad tab)…`);
-    const w = window.open("about:blank", "_blank");
-    if (!w || w.closed || typeof w.closed === "undefined") {
-      log("   ↳ BLOCKED ✅ (window.open returned no usable window)");
-    } else {
-      log("   ↳ opened a new tab ❌ (blocker is OFF — this is the junk getting through)");
-      paintFakeAd(w, "AD TAB");
-    }
+    log("E2 click "+gClicks+": calling window.open…", "info");
+    var w = window.open("about:blank","_blank");
+    judgeOpen(w, "E2 click-hijack");
   });
 
-  // Writes a clearly-labeled page into an opened tab/popup so you can
-  // actually SEE that something opened. It stays open until you close
-  // it. (Replaces the old auto-close, which made popups flash and vanish.)
-  function paintFakeAd(win, label) {
-    try {
-      win.document.title = label + " (test)";
-      win.document.body.style.cssText =
-        "margin:0;font-family:system-ui,sans-serif;background:#7a1f1f;color:#fff;" +
-        "display:flex;flex-direction:column;align-items:center;justify-content:center;" +
-        "height:100vh;text-align:center;gap:14px;";
-      win.document.body.innerHTML =
-        '<div style="font-size:40px">🚫</div>' +
-        '<h1 style="margin:0">This is the ' + label + '</h1>' +
-        '<p style="max-width:340px;opacity:.85;font-size:14px">On a real sketchy site this would be an ad or scam page. ' +
-        'It opened because the blocker is OFF. Close this tab and turn the blocker ON to stop it.</p>' +
-        '<button onclick="window.close()" style="padding:10px 18px;border:0;border-radius:8px;' +
-        'background:#fff;color:#7a1f1f;font-weight:600;cursor:pointer">Close this tab</button>';
-    } catch (e) {
-      log("   ↳ (couldn't paint the ad page, but the tab did open)");
-    }
-  }
-
-  // ---- TEST 2: forced downloads -------------------------------------
-  function triggerDownload(filename, contents) {
-    bump("dl");
-    log(`Attempting download: ${filename}`);
-    const blob = new Blob([contents], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click(); // programmatic click — the trick sites use
-    log(`   ↳ called a.click() for ${filename} (watch for a download prompt)`);
-    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
-  }
-
-  $("dlBtn").addEventListener("click", function (e) {
-    e.stopPropagation();
-    triggerDownload("harmless-test.txt", "This is a harmless local test file.\n");
-  });
-  $("dlExeBtn").addEventListener("click", function (e) {
-    e.stopPropagation();
-    // .exe name but it's literally just text — tests the extension's
-    // executable-extension swallow logic without being a real binary.
-    triggerDownload("fake-installer.exe", "Not a real program. Just text pretending to be an .exe for the blocker test.\n");
-  });
-
-  // ---- TEST 3: popups -----------------------------------------------
-  $("popBtn").addEventListener("click", function (e) {
-    e.stopPropagation();
-    bump("pop");
-    log("Attempting window.open popup…");
-    const w = window.open("about:blank", "popupTest", "width=400,height=300");
-    if (!w || w.closed || typeof w.closed === "undefined") {
-      log("   ↳ BLOCKED ✅");
-    } else {
-      log("   ↳ popup opened ❌ (blocker OFF — this is the junk getting through)");
-      paintFakeAd(w, "POPUP");
-    }
-  });
-
-  $("modalBtn").addEventListener("click", function (e) {
-    e.stopPropagation();
-    log("Showing in-page modal (normal element, not blocked).");
-    $("overlay").classList.add("show");
-  });
-  $("closeModal").addEventListener("click", function (e) {
-    e.stopPropagation();
-    $("overlay").classList.remove("show");
-  });
-
-  log("Test page loaded. Toggle your extension on/off and try each test.");
+  log("Harness ready. Tip: turn the extension OFF once and run a few to confirm tests LEAK as expected, then ON to confirm they're BLOCKED.", "info");
 </script>
 </body>
 </html>
